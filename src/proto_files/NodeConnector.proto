@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+service NodeConnector{
+    rpc Greet (GreetRequest) returns (GreetResponse){}
+}
+
+message GreetRequest {
+    string node_id = 1;
+  }
+  
+  
+message GreetResponse {
+    string node_id = 1;
+  }
