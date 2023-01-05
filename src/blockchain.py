@@ -1,10 +1,11 @@
 from datetime import datetime
 from hashlib import sha256
+import logging
 
 
 class Transaction:
     def __init__(self, sender: str, receiver: str, amount: int, timestamp: datetime) -> None:
-        self.sender = sender
+        self.sender = sender  # id of generating node
         self.receiver = receiver
         self.amount = amount
         self.timestamp = timestamp
@@ -52,5 +53,32 @@ class Block:
 
 
 class Blockchain:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, blocks: list[Block] | None) -> None:
+        if blocks is None:
+            self.blocks: list[Block] = []
+            self.blocks.append(Block.create_genesis())
+        else:
+            self.blocks = blocks
+
+    @classmethod
+    def logger(cls):
+        return logging.getLogger(cls.__name__)
+
+    def add_new_block(self, block: Block) -> bool:
+        is_valid = self.verify_new_block(block)
+        if (not is_valid):
+            return False
+        self.blocks.append(block)
+        return True
+
+    def verify_new_block(self, block: Block) -> bool:
+        valid = True
+        if (block.block_hash != block.generate_block_hash()):
+            Blockchain.logger().warning(
+                'Block with index %s has invalid hash value' % block.index)
+            valid = False
+        if (block.prev_hash != self.blocks[-1]):
+            Blockchain.logger().warning(
+                'Block with index %s has invalid value of prev block hash' % block.index)
+            valid = False
+        return valid

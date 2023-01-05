@@ -11,7 +11,7 @@ def main() -> None:
     # block2 = Block.create_block(
     #     1, datetime.datetime.now(), [], block.prev_hash)
     # print(block2.block_hash)
-    print(sys.argv)
+    print('Arguments provided to CLI: ' + str(sys.argv))
     node_to_contact = None
     if (len(sys.argv) > 2):
         node_to_contact = sys.argv[2]

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+service NodeRPCService{
+    rpc Greet (GreetRequest) returns (GreetResponse){}
+
+    rpc Heartbeat (HeartbeatRequest) returns (Empty){}
+}
+
+//Greet
+message GreetRequest {
+    string node_id = 1;
+  }
+  
+  
+message GreetResponse {
+    string node_id = 1;
+  }
+
+//Heartbeat
+message HeartbeatRequest{
+  string node_id = 1;
+  repeated string node_nodes = 2;
+}
+
+message Empty{
+
+}
