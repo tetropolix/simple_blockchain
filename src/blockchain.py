@@ -58,8 +58,23 @@ class Blockchain:
         if blocks is None:
             self.blocks: list[Block] = []
             self.blocks.append(Block.create_genesis())
+            self.blocks = self.blocks*4
         else:
             self.blocks = blocks
+
+    def __repr__(self):
+        output = []
+        output.append('Num of block: %d' % len(self.blocks))
+        output.append('Last block index: %d' % self.blocks[-1].index)
+        output.append('Last block timestamp: %s' %
+                      str(self.blocks[-1].timestamp))
+        fancy_blocks = min(10, len(self.blocks))
+        fancy_blockchain = "chain: "
+        for i in range(0, fancy_blocks-1):
+            fancy_blockchain += "[:]-->"
+        fancy_blockchain += "[:]"
+        output.append(fancy_blockchain)
+        return "\n".join(output)
 
     @classmethod
     def logger(cls):

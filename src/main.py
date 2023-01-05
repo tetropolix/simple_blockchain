@@ -1,9 +1,11 @@
 from __future__ import annotations
 import sys
-import datetime
+from argparse import ArgumentParser, Action
 
-from blockchain import Block
 from node import Node
+from node_cli import NodeCLI
+
+arg_parser = ArgumentParser()
 
 
 def main() -> None:
@@ -18,11 +20,12 @@ def main() -> None:
         if (len(sys.argv) > 2):
             node_to_contact = sys.argv[2]
         node = Node.create_node(sys.argv[1], node_to_contact)
+        print('AFTER node creation')
+        cli = NodeCLI(node)
+        cli.run()
     except Exception as e:
         print('MAIN')
         print(e)
-        
-
 
 
 if __name__ == '__main__':
