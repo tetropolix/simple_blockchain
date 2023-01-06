@@ -24,6 +24,16 @@ class NodeRPCServiceStub(object):
                 request_serializer=NodeRPCService__pb2.HeartbeatRequest.SerializeToString,
                 response_deserializer=NodeRPCService__pb2.Empty.FromString,
                 )
+        self.SendTransaction = channel.unary_unary(
+                '/NodeRPCService/SendTransaction',
+                request_serializer=NodeRPCService__pb2.Transaction.SerializeToString,
+                response_deserializer=NodeRPCService__pb2.Empty.FromString,
+                )
+        self.SendBlock = channel.unary_unary(
+                '/NodeRPCService/SendBlock',
+                request_serializer=NodeRPCService__pb2.Block.SerializeToString,
+                response_deserializer=NodeRPCService__pb2.Empty.FromString,
+                )
 
 
 class NodeRPCServiceServicer(object):
@@ -41,6 +51,18 @@ class NodeRPCServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SendTransaction(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SendBlock(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_NodeRPCServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -52,6 +74,16 @@ def add_NodeRPCServiceServicer_to_server(servicer, server):
             'Heartbeat': grpc.unary_unary_rpc_method_handler(
                     servicer.Heartbeat,
                     request_deserializer=NodeRPCService__pb2.HeartbeatRequest.FromString,
+                    response_serializer=NodeRPCService__pb2.Empty.SerializeToString,
+            ),
+            'SendTransaction': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendTransaction,
+                    request_deserializer=NodeRPCService__pb2.Transaction.FromString,
+                    response_serializer=NodeRPCService__pb2.Empty.SerializeToString,
+            ),
+            'SendBlock': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendBlock,
+                    request_deserializer=NodeRPCService__pb2.Block.FromString,
                     response_serializer=NodeRPCService__pb2.Empty.SerializeToString,
             ),
     }
@@ -94,6 +126,40 @@ class NodeRPCService(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/NodeRPCService/Heartbeat',
             NodeRPCService__pb2.HeartbeatRequest.SerializeToString,
+            NodeRPCService__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SendTransaction(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/NodeRPCService/SendTransaction',
+            NodeRPCService__pb2.Transaction.SerializeToString,
+            NodeRPCService__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SendBlock(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/NodeRPCService/SendBlock',
+            NodeRPCService__pb2.Block.SerializeToString,
             NodeRPCService__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

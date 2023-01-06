@@ -1,8 +1,12 @@
+from __future__ import annotations
+import sys
 import traceback
 import click
 import contextlib
+from datetime import datetime
 
 from node import Node
+from node_composition import NodeId
 
 
 class NonWritable:
@@ -16,19 +20,46 @@ class NonWritable:
 class NodeCLI():
     def __init__(self, node: Node):
         self.node = node
+        self.manual_exit = False
 
     def run(self):
+        def node_id_prompt_util(user_input):
+            try:
+                return NodeId(user_input)
+            except ValueError:
+                raise click.UsageError('Inavlid input for node address %s' % user_input)
+
         @click.group()
         def cli():
             pass
 
         @cli.command(help='Shows current state of blockchain')
         def blockchain():
-            print(self.node.blockchain)
+            print(self.node.blockchain_manager.blockchain)
 
         @cli.command(help='Lists all currently available peers in network')
         def nodes():
             print(self.node.nodes)
+
+        @cli.command(help='Lists all currently available transactions for this node')
+        def transactions():
+            if (not len(self.node.blockchain_manager.transactions)):
+                print('No transactions registered')
+                return
+            for t in self.node.blockchain_manager.transactions:
+                print(t)
+
+        @cli.command(help='Generates transaction which will be broadcasted to all available peers')
+        def transact():
+            receiver: NodeId = click.prompt('... Enter full address of receiver or port', value_proc=node_id_prompt_util)
+            amount: int = click.prompt('... Enter amount as integer', type=int)
+            self.node.make_transaction(receiver.node_address, amount)
+
+        @cli.command(help='Disconnects node from the network')
+        def exit():
+            self.node.stop()
+            print('Node has been disconnected')
+            self.manual_exit = True
 
         while True:
             try:
@@ -40,15 +71,19 @@ class NodeCLI():
                     cli(args=user_input)  # CLI is global :/
 
             except SystemExit as e:  # manual catch due to click terminates execution after handling user input as per docs
-                if (e.code == 0):  # 0 is normal exit 2 is for wrong input
+                if (self.manual_exit):
+                    sys.exit(0)
+                if (e.code == 0 or e.code == 1):  # 0 is normal exit 2 is for wrong input
                     pass
                 elif (e.code == 2):
                     print('Unable to parse input, type --help for help')
                     pass
                 elif (e.code):
-                    print('RAISE')
-                    print(e.code)
+                    print('Unhandled e.code')
                     raise
+            except KeyboardInterrupt as e:  # kill node threads
+                self.node.stop()
+                raise
             except Exception as e:
                 traceback.print_exc()
                 print(type(e))

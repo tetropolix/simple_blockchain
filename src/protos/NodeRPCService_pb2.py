@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14NodeRPCService.proto\"\x1f\n\x0cGreetRequest\x12\x0f\n\x07node_id\x18\x01 \x01(\t\" \n\rGreetResponse\x12\x0f\n\x07node_id\x18\x01 \x01(\t\"7\n\x10HeartbeatRequest\x12\x0f\n\x07node_id\x18\x01 \x01(\t\x12\x12\n\nnode_nodes\x18\x02 \x03(\t\"\x07\n\x05\x45mpty2d\n\x0eNodeRPCService\x12(\n\x05Greet\x12\r.GreetRequest\x1a\x0e.GreetResponse\"\x00\x12(\n\tHeartbeat\x12\x11.HeartbeatRequest\x1a\x06.Empty\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14NodeRPCService.proto\"\x1f\n\x0cGreetRequest\x12\x0f\n\x07node_id\x18\x01 \x01(\t\" \n\rGreetResponse\x12\x0f\n\x07node_id\x18\x01 \x01(\t\"7\n\x10HeartbeatRequest\x12\x0f\n\x07node_id\x18\x01 \x01(\t\x12\x12\n\nnode_nodes\x18\x02 \x03(\t\"R\n\x0bTransaction\x12\x0e\n\x06sender\x18\x01 \x01(\t\x12\x10\n\x08receiver\x18\x02 \x01(\t\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x05\x12\x11\n\ttimestamp\x18\x04 \x01(\x05\"l\n\x05\x42lock\x12\r\n\x05index\x18\x01 \x01(\x05\x12\x11\n\ttimestamp\x18\x02 \x01(\x05\x12\x11\n\tprev_hash\x18\x03 \x01(\t\x12\x12\n\nblock_hash\x18\x04 \x01(\t\x12\x1a\n\x04\x64\x61ta\x18\x05 \x03(\x0b\x32\x0c.Transaction\"\x07\n\x05\x45mpty2\xae\x01\n\x0eNodeRPCService\x12(\n\x05Greet\x12\r.GreetRequest\x1a\x0e.GreetResponse\"\x00\x12(\n\tHeartbeat\x12\x11.HeartbeatRequest\x1a\x06.Empty\"\x00\x12)\n\x0fSendTransaction\x12\x0c.Transaction\x1a\x06.Empty\"\x00\x12\x1d\n\tSendBlock\x12\x06.Block\x1a\x06.Empty\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'NodeRPCService_pb2', globals())
@@ -26,8 +26,12 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _GREETRESPONSE._serialized_end=89
   _HEARTBEATREQUEST._serialized_start=91
   _HEARTBEATREQUEST._serialized_end=146
-  _EMPTY._serialized_start=148
-  _EMPTY._serialized_end=155
-  _NODERPCSERVICE._serialized_start=157
-  _NODERPCSERVICE._serialized_end=257
+  _TRANSACTION._serialized_start=148
+  _TRANSACTION._serialized_end=230
+  _BLOCK._serialized_start=232
+  _BLOCK._serialized_end=340
+  _EMPTY._serialized_start=342
+  _EMPTY._serialized_end=349
+  _NODERPCSERVICE._serialized_start=352
+  _NODERPCSERVICE._serialized_end=526
 # @@protoc_insertion_point(module_scope)

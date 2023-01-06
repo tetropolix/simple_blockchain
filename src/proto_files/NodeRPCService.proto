@@ -4,6 +4,10 @@ service NodeRPCService{
     rpc Greet (GreetRequest) returns (GreetResponse){}
 
     rpc Heartbeat (HeartbeatRequest) returns (Empty){}
+
+    rpc SendTransaction (Transaction) returns (Empty){}
+
+    rpc SendBlock (Block) returns (Empty){}
 }
 
 //Greet
@@ -22,6 +26,24 @@ message HeartbeatRequest{
   repeated string node_nodes = 2;
 }
 
+//Transaction
+message Transaction{
+  string sender = 1;
+  string receiver = 2;
+  int32 amount = 3;
+  int32 timestamp = 4; //timestamp in Unix time format
+}
+
+//Block
+message Block{
+  int32 index = 1;
+  int32 timestamp = 2; //timestamp in Unix time format
+  string prev_hash = 3;
+  string block_hash = 4;
+  repeated Transaction data = 5;
+}
+
+//
 message Empty{
 
 }

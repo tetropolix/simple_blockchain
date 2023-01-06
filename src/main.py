@@ -14,18 +14,15 @@ def main() -> None:
     # block2 = Block.create_block(
     #     1, datetime.datetime.now(), [], block.prev_hash)
     # print(block2.block_hash)
-    try:
-        print('Arguments provided to CLI: ' + str(sys.argv))
-        node_to_contact = None
-        if (len(sys.argv) > 2):
-            node_to_contact = sys.argv[2]
-        node = Node.create_node(sys.argv[1], node_to_contact)
-        print('AFTER node creation')
-        cli = NodeCLI(node)
-        cli.run()
-    except Exception as e:
-        print('MAIN')
-        print(e)
+
+    print('Arguments provided to CLI: ' + str(sys.argv))
+    node_to_contact = None
+    if (len(sys.argv) > 2):
+        node_to_contact = sys.argv[2]
+    node = Node.create_node(sys.argv[1], node_to_contact)
+    print('AFTER node creation')
+    cli = NodeCLI(node)
+    cli.run()
 
 
 if __name__ == '__main__':

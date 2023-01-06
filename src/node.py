@@ -1,10 +1,9 @@
 from __future__ import annotations
 import logging
 import sys
-
+from datetime import datetime
 
 from blockchain import Blockchain, Transaction
-import protos.NodeRPCService_pb2_grpc as NodeRPCService_pb2_grpc
 import protos.NodeRPCService_pb2 as NodeRPCService_pb2
 import node_composition
 
@@ -13,10 +12,8 @@ import grpc
 
 class RemoteNode():
     def __init__(self, node_id: node_composition.NodeId | str):
-        self.node_id = node_composition.NodeId(
-            node_id) if isinstance(node_id, str) else node_id
-        self.stub = node_composition.NodeRPCService.get_node_rpc_stub(
-            self.node_id)
+        self.node_id = node_composition.NodeId(node_id) if isinstance(node_id, str) else node_id
+        self.stub = node_composition.NodeRPCService.get_node_rpc_stub(self.node_id)
 
     def __eq__(self, other):
         if (not isinstance(other, RemoteNode)):
@@ -27,25 +24,25 @@ class RemoteNode():
         return hash(self.node_id.node_address)
 
     def greet(self, sender: node_composition.NodeId):
-        self.stub.Greet(NodeRPCService_pb2.GreetRequest(
-            node_id=sender.node_address))
+        self.stub.Greet(NodeRPCService_pb2.GreetRequest(node_id=sender.node_address))
 
     def heartbeat(self, sender: node_composition.NodeId, nodes: list[node_composition.NodeId]):
         str_nodes = [node.node_address for node in nodes]
-        self.stub.Heartbeat(NodeRPCService_pb2.HeartbeatRequest(
-            node_id=sender.node_address, node_nodes=str_nodes))
+        self.stub.Heartbeat(NodeRPCService_pb2.HeartbeatRequest(node_id=sender.node_address, node_nodes=str_nodes))
+
+    def transact(self, transaction: NodeRPCService_pb2.Transaction):
+        self.stub.SendTransaction(transaction)
+
+    def send_new_block(self, new_block: NodeRPCService_pb2.Block):
+        self.stub.SendBlock(new_block)
 
 
 class Node():
     def __init__(self, node_id: str, blockchain: Blockchain | None, nodes: list[RemoteNode], transactions: list[Transaction]) -> None:
         self.node_id = node_composition.NodeId(node_id)
-        self.blockchain = blockchain if blockchain is not None else Blockchain(
-            None)
-        self.transactions = transactions
-        self.nodes_manager = node_composition.NodesManager(
-            self.node_id, nodes)
-        self.node_rpc_service = node_composition.NodeRPCService(
-            self.node_id, self.nodes_manager)
+        self.blockchain_manager = node_composition.BlockchainManager(self, blockchain, transactions)
+        self.nodes_manager = node_composition.NodesManager(self.node_id, nodes)
+        self.node_rpc_service = node_composition.NodeRPCService(self.node_id, self.nodes_manager, self.blockchain_manager)
         self.node_rpc_service.start_service()
         self.nodes_manager.start_heartbeat_task()
 
@@ -72,3 +69,14 @@ class Node():
                 raise
             nodes.append(remote_node)
         return cls(node_id, None, nodes, transactions)
+
+    def make_transaction(self, receiver: str, amount: int):
+        sender = self.node_id.node_address
+        timestamp = int(datetime.now().timestamp())
+        transaction = Transaction(sender, receiver, amount, timestamp)
+        self.nodes_manager.broadcast_transaction(transaction)
+        self.blockchain_manager.add_transaction(transaction)
+
+    def stop(self):
+        self.node_rpc_service.stop_service()
+        self.nodes_manager.stop_heartbeat()
