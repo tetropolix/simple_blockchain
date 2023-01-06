@@ -3,7 +3,7 @@ import logging
 import sys
 from datetime import datetime
 
-from blockchain import Blockchain, Transaction
+from blockchain import Blockchain, Transaction, Block
 import protos.NodeRPCService_pb2 as NodeRPCService_pb2
 import node_composition
 
@@ -30,11 +30,15 @@ class RemoteNode():
         str_nodes = [node.node_address for node in nodes]
         self.stub.Heartbeat(NodeRPCService_pb2.HeartbeatRequest(node_id=sender.node_address, node_nodes=str_nodes))
 
-    def transact(self, transaction: NodeRPCService_pb2.Transaction):
-        self.stub.SendTransaction(transaction)
+    def transact(self, transaction: Transaction):
+        self.stub.SendTransaction(transaction.to_grpc_message())
 
-    def send_new_block(self, new_block: NodeRPCService_pb2.Block):
-        self.stub.SendBlock(new_block)
+    def send_new_block(self, new_block: Block):
+        self.stub.SendBlock(new_block.to_grpc_message())
+
+    def query_blockchain(self) -> Blockchain:
+        blockchain_resp: NodeRPCService_pb2.Blockchain = self.stub.QueryBlockchain(NodeRPCService_pb2.Empty())
+        return Blockchain.from_grpc_message(blockchain_resp)
 
 
 class Node():
@@ -43,6 +47,8 @@ class Node():
         self.blockchain_manager = node_composition.BlockchainManager(self, blockchain, transactions)
         self.nodes_manager = node_composition.NodesManager(self.node_id, nodes)
         self.node_rpc_service = node_composition.NodeRPCService(self.node_id, self.nodes_manager, self.blockchain_manager)
+        
+        self.blockchain_manager.update_blockchain_from_peers()
         self.node_rpc_service.start_service()
         self.nodes_manager.start_heartbeat_task()
 

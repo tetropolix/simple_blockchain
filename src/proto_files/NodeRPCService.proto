@@ -8,6 +8,8 @@ service NodeRPCService{
     rpc SendTransaction (Transaction) returns (Empty){}
 
     rpc SendBlock (Block) returns (Empty){}
+
+    rpc QueryBlockchain (Empty) returns (Blockchain){}
 }
 
 //Greet
@@ -41,6 +43,11 @@ message Block{
   string prev_hash = 3;
   string block_hash = 4;
   repeated Transaction data = 5;
+}
+
+//Blockchain
+message Blockchain{
+  repeated Block blocks = 1;
 }
 
 //

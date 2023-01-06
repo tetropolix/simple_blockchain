@@ -19,6 +19,12 @@ class Block(_message.Message):
     timestamp: int
     def __init__(self, index: _Optional[int] = ..., timestamp: _Optional[int] = ..., prev_hash: _Optional[str] = ..., block_hash: _Optional[str] = ..., data: _Optional[_Iterable[_Union[Transaction, _Mapping]]] = ...) -> None: ...
 
+class Blockchain(_message.Message):
+    __slots__ = ["blocks"]
+    BLOCKS_FIELD_NUMBER: _ClassVar[int]
+    blocks: _containers.RepeatedCompositeFieldContainer[Block]
+    def __init__(self, blocks: _Optional[_Iterable[_Union[Block, _Mapping]]] = ...) -> None: ...
+
 class Empty(_message.Message):
     __slots__ = []
     def __init__(self) -> None: ...

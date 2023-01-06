@@ -65,24 +65,17 @@ class NodeRPCService(NodeRPCService_pb2_grpc.NodeRPCServiceServicer):
         return NodeRPCService_pb2.Empty()
 
     def SendTransaction(self, request: NodeRPCService_pb2.Transaction, context):
-        sender = NodeId(request.sender)
-        receiver = NodeId(request.receiver)
-        amount = request.amount
-        ts = request.timestamp
-        transaction = chain.Transaction(
-            sender.node_address, receiver.node_address, amount, ts)
+        transaction = chain.Transaction.from_grpc_message(request)
         self.blockchain_manager.add_transaction(transaction)
         return NodeRPCService_pb2.Empty()
 
     def SendBlock(self, request: NodeRPCService_pb2.Block, context):
-        index = request.index
-        timestamp = request.timestamp
-        prev_hash = request.prev_hash
-        block_hash = request.block_hash
-        data = [chain.Transaction(t.sender, t.receiver, t.amount, t.timestamp) for t in request.data]
-        new_block = chain.Block(index, timestamp, data, prev_hash, block_hash)
-        self.blockchain_manager.add_block(new_block)
+        new_block = chain.Block.from_grpc_message(request)
+        self.blockchain_manager.add_received_block(new_block)
         return NodeRPCService_pb2.Empty()
+
+    def QueryBlockchain(self, request: NodeRPCService_pb2.Empty, context) -> NodeRPCService_pb2.Blockchain:
+        return self.blockchain_manager.blockchain.to_grpc_message()
 
     def start_service(self):
         if (self.server is not None):
@@ -115,7 +108,7 @@ class NodesManager:
     def broadcast_transaction(self, transaction: chain.Transaction):
         for node in self.nodes:
             try:
-                node.transact(transaction.to_grpc_request())
+                node.transact(transaction)
             except grpc.RpcError as e:
                 if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
                     self.nodes.remove(node)
@@ -166,8 +159,30 @@ class BlockchainManager:
         self.blockchain = blockchain if blockchain is not None else chain.Blockchain(None)
         self.transactions = transactions
 
-    def add_block(self, block: chain.Block):
-        self.blockchain.add_new_block(block)
+    def update_blockchain_from_peers(self):
+        nodes_manager = self.node.nodes_manager
+        peer_nodes = nodes_manager.nodes
+        for node in peer_nodes:
+            try:
+                queried_blockchain = node.query_blockchain()
+            except grpc.RpcError as e:
+                if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
+                    nodes_manager.nodes.remove(node)
+                    # print('Node %s is unavailable' %
+                    #   node.node_id.node_address)
+                    continue
+                raise
+            if (len(queried_blockchain.blocks) > len(self.blockchain.blocks) and queried_blockchain.validate_blockchain()):
+                self.blockchain.blocks = queried_blockchain.blocks
+                print('Blockchain has been updated to blockchain state of peer %s' % node.node_id.node_address)
+
+    def add_received_block(self, block: chain.Block):
+        added = self.blockchain.add_new_block(block)
+        if (added == True):
+            return
+        should_query_for_blockchain = self.blockchain.only_greater_index(block)
+        if (should_query_for_blockchain):
+            self.update_blockchain_from_peers()
 
     def add_transaction(self, transaction: chain.Transaction):
         nodes_manager = self.node.nodes_manager
@@ -184,7 +199,7 @@ class BlockchainManager:
             peer_nodes = nodes_manager.nodes
             for node in peer_nodes:
                 try:
-                    node.send_new_block(new_block.to_grpc_request())
+                    node.send_new_block(new_block)
                 except grpc.RpcError as e:
                     if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
                         nodes_manager.nodes.remove(node)

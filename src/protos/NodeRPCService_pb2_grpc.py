@@ -34,6 +34,11 @@ class NodeRPCServiceStub(object):
                 request_serializer=NodeRPCService__pb2.Block.SerializeToString,
                 response_deserializer=NodeRPCService__pb2.Empty.FromString,
                 )
+        self.QueryBlockchain = channel.unary_unary(
+                '/NodeRPCService/QueryBlockchain',
+                request_serializer=NodeRPCService__pb2.Empty.SerializeToString,
+                response_deserializer=NodeRPCService__pb2.Blockchain.FromString,
+                )
 
 
 class NodeRPCServiceServicer(object):
@@ -63,6 +68,12 @@ class NodeRPCServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def QueryBlockchain(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_NodeRPCServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -85,6 +96,11 @@ def add_NodeRPCServiceServicer_to_server(servicer, server):
                     servicer.SendBlock,
                     request_deserializer=NodeRPCService__pb2.Block.FromString,
                     response_serializer=NodeRPCService__pb2.Empty.SerializeToString,
+            ),
+            'QueryBlockchain': grpc.unary_unary_rpc_method_handler(
+                    servicer.QueryBlockchain,
+                    request_deserializer=NodeRPCService__pb2.Empty.FromString,
+                    response_serializer=NodeRPCService__pb2.Blockchain.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -161,5 +177,22 @@ class NodeRPCService(object):
         return grpc.experimental.unary_unary(request, target, '/NodeRPCService/SendBlock',
             NodeRPCService__pb2.Block.SerializeToString,
             NodeRPCService__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def QueryBlockchain(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/NodeRPCService/QueryBlockchain',
+            NodeRPCService__pb2.Empty.SerializeToString,
+            NodeRPCService__pb2.Blockchain.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
