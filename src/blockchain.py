@@ -90,7 +90,7 @@ class Block:
 
 
 class Blockchain:
-    TRANSACTIONS_THRESHOLD = 1
+    TRANSACTIONS_THRESHOLD = 2
 
     def __init__(self, blocks: list[Block] | None) -> None:
         if blocks is None:
@@ -107,7 +107,7 @@ class Blockchain:
             fancy_blockchain += "[:]-->"
         fancy_blockchain += "[:]"
         output.append(fancy_blockchain)
-        output.append('Num of block: %d' % len(self.blocks))
+        output.append('Num of blocks: %d' % len(self.blocks))
         output.append('Last block index: %d' % self.blocks[-1].index)
         output.append('Last block timestamp: %s' %
                       str(self.blocks[-1].timestamp))

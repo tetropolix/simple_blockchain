@@ -3,7 +3,7 @@ from datetime import datetime
 import socket
 from concurrent import futures
 import threading
-import time
+import persistence.database as persistence
 
 import protos.NodeRPCService_pb2_grpc as NodeRPCService_pb2_grpc
 import protos.NodeRPCService_pb2 as NodeRPCService_pb2
@@ -84,7 +84,6 @@ class NodeRPCService(NodeRPCService_pb2_grpc.NodeRPCServiceServicer):
             executor.submit(self._start_grpc_server)
 
     def _start_grpc_server(self):
-        # print('Start of grpc server' + str(threading.get_ident()))
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
         NodeRPCService_pb2_grpc.add_NodeRPCServiceServicer_to_server(self, self.server)
         self.server.add_insecure_port(self.node_id.node_address)
@@ -104,6 +103,7 @@ class NodesManager:
         self.nodes = nodes
         self.heartbeat_running = False
         self.heartbeat_task = None
+        self._lock = threading.Lock()
 
     def broadcast_transaction(self, transaction: chain.Transaction):
         for node in self.nodes:
@@ -111,17 +111,11 @@ class NodesManager:
                 node.transact(transaction)
             except grpc.RpcError as e:
                 if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
-                    self.nodes.remove(node)
+                    self.remove_node_from_nodes(node)
                     # print('Node %s is unavailable' %
                     #   node.node_id.node_address)
                     continue
                 raise
-
-    def update_nodes_after_remote_heartbeat(self, nodes: list[node.RemoteNode]):
-        updated = set(self.nodes).union(set(nodes))
-        if node.RemoteNode(self.node_id) in updated:
-            updated.remove(node.RemoteNode(self.node_id))
-        self.nodes = list(updated)
 
     def start_heartbeat_task(self):
         # print('Starting heartbeat task for node ' + self.node_id.node_address)
@@ -143,21 +137,46 @@ class NodesManager:
                     node.heartbeat(self.node_id, nodes)
                 except grpc.RpcError as e:
                     if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
-                        self.nodes.remove(node)
+                        self.remove_node_from_nodes(node)
                         # print('Node %s is unavailable' %
                         #   node.node_id.node_address)
                         continue
                     raise
+
+    def update_nodes_after_remote_heartbeat(self, nodes: list[node.RemoteNode]):
+        with self._lock:
+            updated = set(self.nodes).union(set(nodes))
+            if node.RemoteNode(self.node_id) in updated:
+                updated.remove(node.RemoteNode(self.node_id))
+            self.nodes = list(updated)
+
+    def remove_node_from_nodes(self, node: node.RemoteNode):
+        with self._lock:
+            if (node in self.nodes):
+                self.nodes.remove(node)
+
+    def add_node_to_nodes(self, node: node.RemoteNode):
+        with self._lock:
+            if (node not in self.nodes):
+                self.nodes.append(node)
 
     def stop_heartbeat(self):
         self.heartbeat_running_event.set()
 
 
 class BlockchainManager:
-    def __init__(self, node: node.Node, blockchain: chain.Blockchain | None, transactions: list[chain.Transaction]):
+    def __init__(
+            self, node: node.Node, blockchain: chain.Blockchain | None, transactions: list[chain.Transaction],
+            database: persistence.Database):
         self.node = node
-        self.blockchain = blockchain if blockchain is not None else chain.Blockchain(None)
+        self.database = database
+        if (blockchain is None):
+            self.blockchain = chain.Blockchain(None)
+            self.database.init_node_blockchain(node.node_id.node_address, self.blockchain)
+        else:
+            self.blockchain = blockchain
         self.transactions = transactions
+        self._lock = threading.Lock()
 
     def update_blockchain_from_peers(self):
         nodes_manager = self.node.nodes_manager
@@ -167,46 +186,67 @@ class BlockchainManager:
                 queried_blockchain = node.query_blockchain()
             except grpc.RpcError as e:
                 if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
-                    nodes_manager.nodes.remove(node)
+                    nodes_manager.remove_node_from_nodes(node)
                     # print('Node %s is unavailable' %
                     #   node.node_id.node_address)
                     continue
                 raise
             if (len(queried_blockchain.blocks) > len(self.blockchain.blocks) and queried_blockchain.validate_blockchain()):
-                self.blockchain.blocks = queried_blockchain.blocks
-                print('Blockchain has been updated to blockchain state of peer %s' % node.node_id.node_address)
+                with self._lock:
+                    print('LOCK ACQUIRED update_blockchain_from_peers')
+                    self.blockchain.blocks = queried_blockchain.blocks
+                    self.database.node_new_blockchain(self.node.node_id.node_address, self.blockchain)
+                    print('Blockchain has been updated to blockchain state of peer %s' % node.node_id.node_address)
+                print('LOCK RELEASED update_blockchain_from_peers')
 
     def add_received_block(self, block: chain.Block):
-        added = self.blockchain.add_new_block(block)
-        if (added == True):
-            return
-        should_query_for_blockchain = self.blockchain.only_greater_index(block)
+        with self._lock:
+            print('LOCK ACQUIRED add_received_block')
+            added = self.blockchain.add_new_block(block)
+            if (added == True):
+                self.database.node_new_block(self.node.node_id.node_address, block=block)  # persist received block to db
+                # clear node transactions as new state of blockchain has been reached
+                self.database.clear_node_transactions(self.node.node_id.node_address)
+                self.transactions = []
+                print('LOCK RELEASED add_received_block')
+                return
+            should_query_for_blockchain = self.blockchain.only_greater_index(block)
+        print('LOCK RELEASED add_received_block')
         if (should_query_for_blockchain):
             self.update_blockchain_from_peers()
 
     def add_transaction(self, transaction: chain.Transaction):
-        nodes_manager = self.node.nodes_manager
-        self.transactions.append(transaction)
-        if (len(self.transactions) < chain.Blockchain.TRANSACTIONS_THRESHOLD and not self._node_is_block_creator()):  # not creator and not enough transactions
-            return
-        elif (len(self.transactions) >= chain.Blockchain.TRANSACTIONS_THRESHOLD and not self._node_is_block_creator()):  # not creator but enough transactions
-            self.transactions = []
-            return
-        if (len(self.transactions) >= chain.Blockchain.TRANSACTIONS_THRESHOLD and self._node_is_block_creator()):  # creator and enough transactions
-            new_block = self._block_creation()
-            if new_block is None:
+        with self._lock:
+            print('LOCK ACQUIRED add_transaction')
+            nodes_manager = self.node.nodes_manager
+            self.database.store_node_transaction(self.node.node_id.node_address, transaction)
+            self.transactions.append(transaction)
+            if (len(self.transactions) < chain.Blockchain.TRANSACTIONS_THRESHOLD and not self._node_is_block_creator()):  # not creator and not enough transactions
+                print('LOCK RELEASED -add_transaction')
                 return
-            peer_nodes = nodes_manager.nodes
-            for node in peer_nodes:
-                try:
-                    node.send_new_block(new_block)
-                except grpc.RpcError as e:
-                    if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
-                        nodes_manager.nodes.remove(node)
-                        # print('Node %s is unavailable' %
-                        #   node.node_id.node_address)
-                        continue
-                    raise
+            elif (len(self.transactions) >= chain.Blockchain.TRANSACTIONS_THRESHOLD and not self._node_is_block_creator()):  # not creator but enough transactions
+                self.transactions = []
+                print('LOCK RELEASED -add_transaction')
+                return
+            if (len(self.transactions) >= chain.Blockchain.TRANSACTIONS_THRESHOLD and self._node_is_block_creator()):  # creator and enough transactions
+                new_block = self._block_creation()
+                if new_block is None:
+                    print('LOCK RELEASED -add_transaction')
+                    return
+                else:  # persist block to db
+                    self.database.node_new_block(self.node.node_id.node_address, block=new_block)  # persist received block to db
+                peer_nodes = nodes_manager.nodes
+                for node in peer_nodes:
+                    try:
+                        node.send_new_block(new_block)
+                    except grpc.RpcError as e:
+                        if (e.code() == grpc.StatusCode.UNAVAILABLE):  # type: ignore
+                            nodes_manager.remove_node_from_nodes(node)
+                            # print('Node %s is unavailable' %
+                            #   node.node_id.node_address)
+                            continue
+                        raise
+        print('LOCK RELEASED -add_transaction')
 
     def _block_creation(self) -> chain.Block | None:
         last_block = self.blockchain.last_block()
@@ -217,6 +257,7 @@ class BlockchainManager:
         if (not self.blockchain.add_new_block(new_block)):
             print('Adding block to blockchain was unsuccessful')
             return None
+        self.database.clear_node_transactions(self.node.node_id.node_address)
         self.transactions = []
         return new_block
 

@@ -32,6 +32,7 @@ class NodeCLI():
         @click.group()
         def cli():
             pass
+        
 
         @cli.command(help='Shows current state of blockchain')
         def blockchain():
@@ -48,6 +49,10 @@ class NodeCLI():
                 return
             for t in self.node.blockchain_manager.transactions:
                 print(t)
+
+        @cli.command(help='Manual update of current blockchain state')
+        def update():
+            self.node.manual_blockchain_update()
 
         @cli.command(help='Generates transaction which will be broadcasted to all available peers')
         def transact():

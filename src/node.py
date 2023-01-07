@@ -4,6 +4,7 @@ import sys
 from datetime import datetime
 
 from blockchain import Blockchain, Transaction, Block
+from persistence.database import Database
 import protos.NodeRPCService_pb2 as NodeRPCService_pb2
 import node_composition
 
@@ -42,13 +43,22 @@ class RemoteNode():
 
 
 class Node():
-    def __init__(self, node_id: str, blockchain: Blockchain | None, nodes: list[RemoteNode], transactions: list[Transaction]) -> None:
+    NODE_DB_FILE = 'persistence/p2p.db'
+    NODE_DB_INIT_FILE = 'persistence/init.sql'
+
+    def __init__(self, node_id: str, nodes: list[RemoteNode]) -> None:
         self.node_id = node_composition.NodeId(node_id)
-        self.blockchain_manager = node_composition.BlockchainManager(self, blockchain, transactions)
+
+        self.database = Database(Node.NODE_DB_FILE, Node.NODE_DB_INIT_FILE)
+        blockchain = self.database.get_node_blockchain_state(self.node_id.node_address)
+        transactions = self.database.get_node_stored_transactions(self.node_id.node_address)
+        transactions = [] if transactions is None else transactions
+
+        self.blockchain_manager = node_composition.BlockchainManager(self, blockchain, transactions, self.database)
         self.nodes_manager = node_composition.NodesManager(self.node_id, nodes)
         self.node_rpc_service = node_composition.NodeRPCService(self.node_id, self.nodes_manager, self.blockchain_manager)
-        
-        self.blockchain_manager.update_blockchain_from_peers()
+
+        # self.blockchain_manager.update_blockchain_from_peers()
         self.node_rpc_service.start_service()
         self.nodes_manager.start_heartbeat_task()
 
@@ -63,7 +73,6 @@ class Node():
     @ classmethod
     def create_node(cls, node_id: str, node_to_contact: str | None):
         nodes: list[RemoteNode] = []
-        transactions: list[Transaction] = []
         if (node_to_contact is not None):  # not the first node
             remote_node = RemoteNode(node_to_contact)
             try:
@@ -74,7 +83,7 @@ class Node():
                              remote_node.node_id.node_address)
                 raise
             nodes.append(remote_node)
-        return cls(node_id, None, nodes, transactions)
+        return cls(node_id, nodes)
 
     def make_transaction(self, receiver: str, amount: int):
         sender = self.node_id.node_address
@@ -83,6 +92,10 @@ class Node():
         self.nodes_manager.broadcast_transaction(transaction)
         self.blockchain_manager.add_transaction(transaction)
 
+    def manual_blockchain_update(self):
+        self.blockchain_manager.update_blockchain_from_peers()
+
     def stop(self):
         self.node_rpc_service.stop_service()
         self.nodes_manager.stop_heartbeat()
+        self.database.stop()
