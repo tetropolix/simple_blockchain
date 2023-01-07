@@ -3,7 +3,6 @@ import sys
 import traceback
 import click
 import contextlib
-from datetime import datetime
 
 from node import Node
 from node_composition import NodeId
