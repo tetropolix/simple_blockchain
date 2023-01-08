@@ -9,6 +9,8 @@ import node_composition
 
 class Transaction:
     def __init__(self, sender: str, receiver: str, amount: int, timestamp: int) -> None:
+        if(amount < 0):
+            raise ValueError('Transaction cannot have negative amount')
         self.sender = sender  # id of generating node
         self.receiver = receiver
         self.amount = amount

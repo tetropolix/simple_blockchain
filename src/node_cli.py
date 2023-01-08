@@ -28,10 +28,18 @@ class NodeCLI():
             except ValueError:
                 raise click.UsageError('Inavlid input for node address %s' % user_input)
 
+        def non_negative_amount(user_input):
+            try:
+                if(int(user_input) <0):
+                    raise click.UsageError('Amount must be non negative integer')
+                return int(user_input)
+            except (ValueError,TypeError):
+                raise click.UsageError('Amount must be non negative integer')
+
+
         @click.group()
         def cli():
             pass
-        
 
         @cli.command(help='Shows current state of blockchain')
         def blockchain():
@@ -53,10 +61,14 @@ class NodeCLI():
         def update():
             self.node.manual_blockchain_update()
 
+        @cli.command(help='Shows current balanace of the node')
+        def balance():
+            print(self.node.node_balance())
+
         @cli.command(help='Generates transaction which will be broadcasted to all available peers')
         def transact():
             receiver: NodeId = click.prompt('... Enter full address of receiver or port', value_proc=node_id_prompt_util)
-            amount: int = click.prompt('... Enter amount as integer', type=int)
+            amount: int = click.prompt('... Enter amount as integer', value_proc=non_negative_amount)
             self.node.make_transaction(receiver.node_address, amount)
 
         @cli.command(help='Disconnects node from the network')

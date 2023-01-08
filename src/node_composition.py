@@ -165,6 +165,8 @@ class NodesManager:
 
 
 class BlockchainManager:
+    NODE_INIT_AMOUNT = 100
+
     def __init__(
             self, node: node.Node, blockchain: chain.Blockchain | None, transactions: list[chain.Transaction],
             database: persistence.Database):
@@ -198,6 +200,20 @@ class BlockchainManager:
                     self.database.node_new_blockchain(self.node.node_id.node_address, self.blockchain)
                     print('Blockchain has been updated to blockchain state of peer %s' % node.node_id.node_address)
                 print('LOCK RELEASED update_blockchain_from_peers')
+
+    def get_amount(self) -> int:
+        blockchain_amount = 0
+        with self._lock:
+            for block in self.blockchain.blocks:
+                for t in block.data:
+                    if (t.sender == self.node.node_id.node_address):
+                        blockchain_amount -= t.amount
+                    elif (t.receiver == self.node.node_id.node_address):
+                        blockchain_amount += t.amount
+            for t in self.transactions:
+                if (t.sender == self.node.node_id.node_address):
+                    blockchain_amount -= t.amount
+        return BlockchainManager.NODE_INIT_AMOUNT + blockchain_amount
 
     def add_received_block(self, block: chain.Block):
         with self._lock:
@@ -263,4 +279,8 @@ class BlockchainManager:
 
     def _node_is_block_creator(self) -> bool:
         last_transaction = max(self.transactions, key=lambda t: t.timestamp)
+        senders = [int(NodeId(t.sender).port) for t in self.transactions if t.timestamp == last_transaction.timestamp]
+        if (len(senders) > 1):  # in case there were more than one last_transaction
+            max_port = max(senders)
+            return NodeId(str(max_port)).node_address == self.node.node_id.node_address
         return last_transaction.sender == self.node.node_id.node_address

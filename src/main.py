@@ -1,5 +1,4 @@
 from __future__ import annotations
-import sys
 
 from node import Node
 from node_cli import NodeCLI

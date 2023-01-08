@@ -92,6 +92,9 @@ class Node():
         self.nodes_manager.broadcast_transaction(transaction)
         self.blockchain_manager.add_transaction(transaction)
 
+    def node_balance(self):
+        return self.blockchain_manager.get_amount()
+
     def manual_blockchain_update(self):
         self.blockchain_manager.update_blockchain_from_peers()
 
