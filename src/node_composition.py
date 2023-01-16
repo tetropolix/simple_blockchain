@@ -278,7 +278,7 @@ class BlockchainManager:
         return new_block
 
     def _node_is_block_creator(self) -> bool:
-        last_transaction = max(self.transactions, key=lambda t: t.timestamp)
+        last_transaction = min(self.transactions, key=lambda t: t.timestamp) #time should be the lowest value
         senders = [int(NodeId(t.sender).port) for t in self.transactions if t.timestamp == last_transaction.timestamp]
         if (len(senders) > 1):  # in case there were more than one last_transaction
             max_port = max(senders)
