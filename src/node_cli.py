@@ -69,7 +69,10 @@ class NodeCLI():
         def transact():
             receiver: NodeId = click.prompt('... Enter full address of receiver or port', value_proc=node_id_prompt_util)
             amount: int = click.prompt('... Enter amount as integer', value_proc=non_negative_amount)
-            self.node.make_transaction(receiver.node_address, amount)
+            try:
+                self.node.make_transaction(receiver.node_address, amount)
+            except ValueError:
+                print('Insufficient funds!')
 
         @cli.command(help='Disconnects node from the network')
         def exit():

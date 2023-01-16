@@ -88,6 +88,8 @@ class Node():
     def make_transaction(self, receiver: str, amount: int):
         sender = self.node_id.node_address
         timestamp = int(datetime.now().timestamp())
+        if(self.blockchain_manager.get_amount() < amount):
+            raise ValueError('Transaction with amount higher than available balance')
         transaction = Transaction(sender, receiver, amount, timestamp)
         self.nodes_manager.broadcast_transaction(transaction)
         self.blockchain_manager.add_transaction(transaction)

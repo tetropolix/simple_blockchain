@@ -1,3 +1,5 @@
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS node(
     id INTEGER PRIMARY KEY,
     full_address VARCHAR(64) NOT NULL
