@@ -1,4 +1,4 @@
-##Simple blockchain created for distributed system simulation utilizing capabilities of gRPC.
+## Simple blockchain created for distributed system simulation utilizing capabilities of gRPC.
 
 **Requirements installation**
 
